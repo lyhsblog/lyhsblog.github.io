@@ -23,7 +23,7 @@ const config = {
   organizationName: 'lyhsblog', // Usually your GitHub org/user name.
   projectName: 'lyhsblog.github.io', // Usually your repo name.
   trailingSlash: false,
-  deploymentBranch: 'deploy',
+  deploymentBranch: 'main',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
 
