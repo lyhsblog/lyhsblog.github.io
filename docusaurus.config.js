@@ -9,7 +9,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: '程序员LYH',
-  tagline: 'Dinosaurs are cool',
+  tagline: '技术之路，文档先行',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
@@ -20,8 +20,8 @@ const config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'liyhblog', // Usually your GitHub org/user name.
-  projectName: 'liyhblog.github.io', // Usually your repo name.
+  organizationName: 'lyhsblog', // Usually your GitHub org/user name.
+  projectName: 'lyhsblog.github.io', // Usually your repo name.
   trailingSlash: false,
   deploymentBranch: 'deploy',
   onBrokenLinks: 'throw',
