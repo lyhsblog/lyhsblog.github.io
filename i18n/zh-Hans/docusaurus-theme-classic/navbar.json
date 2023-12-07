@@ -1,0 +1,22 @@
+{
+  "title": {
+    "message": "程序员LYH",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "程序员LYH",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Tutorial": {
+    "message": "历程",
+    "description": "Navbar item with label Tutorial"
+  },
+  "item.label.Blog": {
+    "message": "博客",
+    "description": "Navbar item with label Blog"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}
