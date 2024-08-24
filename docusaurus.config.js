@@ -8,6 +8,9 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
+  plugins: [
+    ['drawio', {}],
+  ],
   title: '程序员LYH',
   tagline: '技术之路，文档先行',
   favicon: 'img/favicon.ico',
