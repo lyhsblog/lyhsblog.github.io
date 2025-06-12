@@ -1,5 +1,5 @@
 ---
-id: install-sublinux
+id: deepseek-llphant-news
 title: LLPhant PHP AI框架正式支持Deepseek模型，进一步扩展多模型生态
 ---
 
