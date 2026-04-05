@@ -1,9 +1,11 @@
 /**
  * @file rtc_hr_schedule.c
  *
- * 仅 COMPARE0：用于「每分钟」唤醒；计步由 LIS3DH 运动中断在 RAM 中累加，与本模块无关。
+ * TICK：约 25 ms 一次，供主循环读加速度计步（I²C 不在 ISR 里做）。
+ * COMPARE0：整分钟，落盘 + 心率策略。
  */
 #include "rtc_hr_schedule.h"
+#include "nrf.h"
 #include "nrf_drv_clock.h"
 #include "nrf_drv_rtc.h"
 
@@ -11,10 +13,13 @@
 
 static const nrf_drv_rtc_t m_rtc = NRF_DRV_RTC_INSTANCE(2);
 static volatile bool m_minute_due;
+static volatile uint32_t m_step_tick_count;
 
 static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 {
-    if (int_type == NRF_DRV_RTC_INT_COMPARE0) {
+    if (int_type == NRF_DRV_RTC_INT_TICK) {
+        m_step_tick_count++;
+    } else if (int_type == NRF_DRV_RTC_INT_COMPARE0) {
         m_minute_due = true;
     }
 }
@@ -53,9 +58,11 @@ ret_code_t rtc_hr_schedule_init(uint32_t interval_sec)
         return err;
     }
 
+    nrf_drv_rtc_tick_enable(&m_rtc);
     nrf_drv_rtc_enable(&m_rtc);
 
     m_minute_due = false;
+    m_step_tick_count = 0;
     rtc_hr_schedule_arm_seconds(interval_sec);
     return NRF_SUCCESS;
 }
@@ -72,4 +79,15 @@ bool rtc_hr_schedule_consume_due(void)
 void rtc_hr_schedule_discard_pending(void)
 {
     m_minute_due = false;
+}
+
+uint32_t rtc_schedule_drain_step_ticks(void)
+{
+    uint32_t n;
+
+    __disable_irq();
+    n = m_step_tick_count;
+    m_step_tick_count = 0;
+    __enable_irq();
+    return n;
 }

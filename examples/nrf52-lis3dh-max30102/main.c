@@ -1,13 +1,10 @@
 /**
  * @file main.c
- * @brief nRF52 + LIS3DH（运动中断 RAM 计步）+ MAX30102（心率）+ RTC 每分钟任务
+ * @brief LIS3DH 运动 INT 仅清中断；计步在主循环读加速度；RTC 每分钟落盘 + 条件心率
  *
- * 策略（与用户约定一致）：
- * - 运动检测 INT1 每触发一次 → RAM 中本周期步数累加（示意：1 次中断 +1，阈值需标定）。
- * - RTC COMPARE0 每 60 s → 读出 RAM 步数 → 持久化（stub）→ RAM 清零；
- *   心率：本分钟步数 > STEP_THRESHOLD_HIGH 则本分钟测；否则仅当连续低活动满 LOW_ACTIVITY_MINUTES 分钟才测。
- *
- * 依赖：TWI0、GPIOTE、LFCLK、RTC2（无 TICK）。心率窗口内仍用 nrf_delay_ms。
+ * - GPIOTE ISR：只做 lis3dh_clear_int1()（不在 ISR 里 I²C 读数据，避免中断过长）。
+ * - RTC TICK ≈25 ms：主循环读 lis3dh_read_accel → step_counter → 判到一步则 g_steps_ram++。
+ * - RTC COMPARE0 每 60 s：persist + 清零 g_steps_ram + 心率规则。
  */
 #include <stdint.h>
 #include <stdbool.h>
@@ -22,31 +19,26 @@
 #include "lis3dh.h"
 #include "max30102.h"
 #include "hr_estimator.h"
+#include "step_counter.h"
 #include "rtc_hr_schedule.h"
 
 #define MAX30102_SAMPLE_RATE_HZ  100u
 #define HR_MEASURE_WINDOW_MS     4000u
 #define HR_POLL_INTERVAL_MS      25u
 
-/** RTC：整分钟节拍（秒） */
 #define RTC_MINUTE_PERIOD_SEC    60u
-
-/** 本分钟 RAM 步数超过此值 → 本分钟直接测心率 */
 #define STEP_THRESHOLD_HIGH      100u
-
-/** 否则：连续「步数未超过阈值」的分钟数达到此值才测心率（4～5 分钟，此处用 5） */
 #define LOW_ACTIVITY_MINUTES     5u
 
-/* 本统计周期内由运动中断累加的步数（RAM）；每分钟 RTC 任务读走并清零 */
+/* 本分钟内由「加速度计步算法」累加的步数；每分钟任务读走并清零 */
 static volatile uint32_t g_steps_ram;
 
 static void lis3dh_int1_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
     (void)pin;
     (void)action;
+    /* 只清 LIS3DH 锁存；步数在主线读 OUT_X/Y/Z + step_counter 判定 */
     lis3dh_clear_int1();
-    /* 示意：每次运动中断计 1「步」/事件；量产可改为脉冲计数或读 LIS3DH 数据源 */
-    g_steps_ram++;
 }
 
 static void gpiote_init_lis3dh(void)
@@ -64,11 +56,10 @@ static void gpiote_init_lis3dh(void)
     }
 }
 
-/** 将上一分钟步数写入 Flash/文件等；此处为 stub */
 static void persist_steps_minute(uint32_t steps_this_minute)
 {
     (void)steps_this_minute;
-    /* TODO: nrf_fstorage 或外部 Flash；避免在 stub 中长时间阻塞 */
+    /* TODO: Flash */
 }
 
 static uint8_t run_one_hr_measurement(void)
@@ -108,10 +99,6 @@ static uint8_t run_one_hr_measurement(void)
     return hr_estimate_bpm_from_red(red_buf, total, MAX30102_SAMPLE_RATE_HZ);
 }
 
-/**
- * 每分钟 RTC 到期时调用：落盘、清零 RAM 步数、按规则决定是否测心率。
- * @param low_streak 连续「步数 ≤ STEP_THRESHOLD_HIGH」的分钟数（由调用方读写）
- */
 static void on_minute_tick(uint32_t *low_streak)
 {
     uint32_t steps;
@@ -162,6 +149,8 @@ int main(void)
     (void)max30102_read_part_id(&part);
     (void)max30102_init();
 
+    step_counter_init();
+
     err = rtc_hr_schedule_init(RTC_MINUTE_PERIOD_SEC);
     if (err != NRF_SUCCESS) {
         for (;;) {
@@ -172,9 +161,25 @@ int main(void)
     uint32_t low_activity_streak = 0;
 
     for (;;) {
+        uint32_t n = rtc_schedule_drain_step_ticks();
+        while (n > 0u) {
+            n--;
+            int16_t ax, ay, az;
+            err = lis3dh_read_accel(&ax, &ay, &az);
+            if (err == NRF_SUCCESS) {
+                step_counter_notify_time_ms(RTC_MS_PER_TICK);
+                if (step_counter_on_accel_sample(ax, ay, az)) {
+                    __disable_irq();
+                    g_steps_ram++;
+                    __enable_irq();
+                }
+            }
+        }
+
         if (rtc_hr_schedule_consume_due()) {
             on_minute_tick(&low_activity_streak);
         }
+
         __WFI();
     }
 }

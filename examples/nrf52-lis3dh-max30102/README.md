@@ -1,42 +1,31 @@
 # nRF52 + LIS3DH + MAX30102 示例工程（C）
 
-本目录提供可在 **Nordic nRF5 SDK** 工程中集成的 **C 源码**：I²C、LIS3DH 运动中断、MAX30102 心率、**RTC 每分钟任务**（RAM 步数落盘 + 条件心率）。
+## 数据流（当前 `main.c`）
 
-## 业务逻辑（当前 `main.c`）
+1. **LIS3DH INT1（GPIOTE 中断）**  
+   只做 **`lis3dh_clear_int1()`**，**不在 ISR 里读传感器**（避免 I²C 拉长中断）。
 
-1. **计步（RAM）**：LIS3DH **INT1 运动中断**每来一次，`g_steps_ram++`（示意：1 次事件计 1；量产可改为多脉冲或读 FIFO）。
-2. **RTC（每 60 s）**：**COMPARE0** 唤醒 → 关中断读出 `g_steps_ram` → **`persist_steps_minute()`**（当前为 **stub**，请接 Flash）→ **RAM 清零**。
-3. **心率**：
-   - 若 **本分钟步数 > `STEP_THRESHOLD_HIGH`（默认 100）** → **本分钟测心率**，并清零「低活动连续分钟」计数；
-   - 否则 **低活动分钟计数 +1**；当 **连续 ≥ `LOW_ACTIVITY_MINUTES`（默认 5，可改为 4）** → **测心率** 并清零计数。
+2. **RTC TICK（约 25 ms）**  
+   主循环 **`lis3dh_read_accel`** → **`step_counter_*`** 做简易峰检测；**判到一步** 再 **`g_steps_ram++`**（关中断保护）。
 
-主循环仅 **`__WFI()`**，依赖 **RTC 分钟中断**（及测心率期间的 `nrf_delay_ms`）。
+3. **RTC COMPARE0（每 60 s）**  
+   读走并清零 **`g_steps_ram`** → **`persist_steps_minute()`**（stub）→ 心率：本分钟 **>100 步** 或 **连续低活动满 5 分钟** → 可选测心率 → **`arm(60)`**。
 
 ## 文件说明
 
 | 文件 | 作用 |
 |------|------|
-| `board_pins.h` | SCL/SDA、LIS3DH INT1 |
-| `i2c_bus.c/h` | TWI0 |
-| `lis3dh.c/h` | 运动中断配置、`lis3dh_clear_int1` |
-| `max30102.c/h` | MAX30102 FIFO / HR 模式 |
-| `hr_estimator.c/h` | 简易 BPM（演示） |
-| `rtc_hr_schedule.c/h` | LFCLK + RTC2，**仅 COMPARE0**（无 TICK） |
+| `step_counter.c/h` | 加速度域简易计步（供主线调用） |
+| `rtc_hr_schedule.c/h` | TICK + COMPARE0 |
 | `main.c` | 上述策略 |
-| `step_counter.c/h` | **未接入当前 main**；可作「加速度域计步」参考 |
 
-## 集成步骤（概要）
+其余：`i2c_bus`、`lis3dh`、`max30102`、`hr_estimator`、`board_pins`。
 
-1. 将需要的 `.c` 加入工程（若不用 `step_counter`，可不加入 `step_counter.c`）。
-2. `sdk_config.h`：`TWI0`、`GPIOTE`、`NRFX_CLOCK`、`RTC2` 等；**无需** `RTC2_TICK`。
-3. 修改 `board_pins.h`；实现 **`persist_steps_minute()`** 内真实写盘。
-4. 调 **`STEP_THRESHOLD_HIGH`、`LOW_ACTIVITY_MINUTES`**；心率采样率见 `MAX30102_SAMPLE_RATE_HZ` 与 `max30102.c` 中 `REG_SPO2_CONFIG`。
+## `sdk_config.h`
 
-## 局限说明
+需 **RTC2_TICK**（`nrf_drv_rtc_tick_enable`）、TWI、GPIOTE、LFCLK。
 
-- 中断内仅 `g_steps_ram++`，与真实「步」的关系需标定；高活动分钟内心率策略为「到分钟边界再测」，非秒级实时。
-- 未集成 SoftDevice、完整 PM；心率窗口内仍 `nrf_delay_ms` 轮询 FIFO。
+## 局限
 
-## 与文档站的关系
-
-设计说明见站点 `docs/手环/`。
+- `step_counter` 与 `g_steps_ram` 为演示级；量产需标定阈值与佩戴轴向。  
+- 心率窗口内仍 `nrf_delay_ms`。
