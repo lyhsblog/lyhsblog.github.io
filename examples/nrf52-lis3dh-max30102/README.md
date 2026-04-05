@@ -13,7 +13,7 @@
    **再次 INT1 会重置窗口起点**（持续走动会续期）。超时 **关 TICK**。
 
 4. **每分钟 COMPARE0**  
-   先 **关计步爆发** → 读走 **`g_steps_ram`** → 落盘 stub → 若需测心率则启动 **非阻塞状态机**（**RTC TICK** 每拍：`START_PPG` → 多拍 **读 FIFO** → **Shutdown** + 算 BPM），**无 `nrf_delay_ms`**。心率结束后 **关 TICK**（除非运动爆发仍应开启，由 `g_motion_pending` 下一圈处理）。
+   先 **关计步爆发** → 读走 **`g_steps_ram`** → 落盘 stub → 若需测心率则启动 **非阻塞状态机**（**RTC TICK** 每拍：先 **MAX30102**，再 **读 LIS3DH + `step_counter`**，填补原约 4 s 心率窗内不计步的缺口）→ **Shutdown** + 算 BPM。**无 `nrf_delay_ms`**。
 
 可调 **`MOTION_BURST_SEC`**：越大跟手越好、越费电；越小越省、可能漏步至下次中断。
 
