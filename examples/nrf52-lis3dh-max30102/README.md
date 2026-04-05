@@ -1,36 +1,42 @@
 # nRF52 + LIS3DH + MAX30102 示例工程（C）
 
-本目录提供可在 **Nordic nRF5 SDK** 工程中集成的 **完整 C 源码**（非 Docusaurus 页面）：I²C 主机、LIS3DH 读加速度与运动中断、MAX30102 心率模式与 FIFO、**简易计步**与 **简易 BPM 估计**。
+本目录提供可在 **Nordic nRF5 SDK** 工程中集成的 **C 源码**：I²C、LIS3DH 运动中断、MAX30102 心率、**RTC 每分钟任务**（RAM 步数落盘 + 条件心率）。
+
+## 业务逻辑（当前 `main.c`）
+
+1. **计步（RAM）**：LIS3DH **INT1 运动中断**每来一次，`g_steps_ram++`（示意：1 次事件计 1；量产可改为多脉冲或读 FIFO）。
+2. **RTC（每 60 s）**：**COMPARE0** 唤醒 → 关中断读出 `g_steps_ram` → **`persist_steps_minute()`**（当前为 **stub**，请接 Flash）→ **RAM 清零**。
+3. **心率**：
+   - 若 **本分钟步数 > `STEP_THRESHOLD_HIGH`（默认 100）** → **本分钟测心率**，并清零「低活动连续分钟」计数；
+   - 否则 **低活动分钟计数 +1**；当 **连续 ≥ `LOW_ACTIVITY_MINUTES`（默认 5，可改为 4）** → **测心率** 并清零计数。
+
+主循环仅 **`__WFI()`**，依赖 **RTC 分钟中断**（及测心率期间的 `nrf_delay_ms`）。
 
 ## 文件说明
 
 | 文件 | 作用 |
 |------|------|
-| `board_pins.h` | SCL/SDA、LIS3DH INT1 引脚（**务必按原理图修改**） |
-| `i2c_bus.c/h` | `nrf_drv_twi` TWI0 封装 |
-| `lis3dh.c/h` | WHO_AM_I、读加速度、INT1 惯性中断初始化 |
-| `max30102.c/h` | 软复位、Shutdown、HR 模式、FIFO 读出与缓冲收集 |
-| `step_counter.c/h` | 幅值 + 高通近似的演示计步（需标定阈值） |
-| `hr_estimator.c/h` | 对红灯波形做中值/差分/峰间期的演示 BPM（非医疗级） |
-| `rtc_hr_schedule.c/h` | LFCLK + **RTC2**：**TICK** ≈40 Hz（约 25 ms）驱动计步采样；**COMPARE0** 按秒级间隔产生心率兜底节拍 |
-| `main.c` | **`__WFI()`** 等待中断；每来一次 RTC TICK 读加速度并计步；**LIS3DH INT1** 或 **RTC 比较**（默认 10 s）触发心率测量 |
+| `board_pins.h` | SCL/SDA、LIS3DH INT1 |
+| `i2c_bus.c/h` | TWI0 |
+| `lis3dh.c/h` | 运动中断配置、`lis3dh_clear_int1` |
+| `max30102.c/h` | MAX30102 FIFO / HR 模式 |
+| `hr_estimator.c/h` | 简易 BPM（演示） |
+| `rtc_hr_schedule.c/h` | LFCLK + RTC2，**仅 COMPARE0**（无 TICK） |
+| `main.c` | 上述策略 |
+| `step_counter.c/h` | **未接入当前 main**；可作「加速度域计步」参考 |
 
 ## 集成步骤（概要）
 
-1. 新建或打开 **nRF5 SDK** 的 `blank` / `peripheral` 工程（`nrf52840_xxaa` 等）。
-2. 将本目录下所有 `.c` 加入工程；头文件路径包含本目录。
-3. 在 `sdk_config.h` 中启用：`TWI_ENABLED`、`TWI0_ENABLED`、`TWI0_USE_EASY_DMA`、`GPIOTE_ENABLED`、`NRFX_CLOCK_ENABLED`、`RTC_ENABLED`、**`RTC2_ENABLED`**、**`RTC2_TICK_ENABLED`**（或等价项，使 `nrf_drv_rtc_tick_enable` 生效）。若与工程内其它模块冲突，可改 `rtc_hr_schedule.c` 中的 `NRF_DRV_RTC_INSTANCE(2)` 为空闲实例。
-4. 修改 `board_pins.h` 中的 **I²C 与 INT1** 引脚。
-5. 确认 LIS3DH **7 位地址**（`0x18` / `0x19`）与 MAX30102 **`0x57`** 与硬件一致。
-6. **心率采样率**：`main.c` 中 `MAX30102_SAMPLE_RATE_HZ` 须与 `max30102.c` 里 `REG_SPO2_CONFIG` 实际配置一致（当前按 **100 Hz** 示意，请以 Maxim 手册核对 `0x27` 对应表）。
-7. **RTC 间隔**：`main.c` 中 `HR_RTC_INTERVAL_SEC` 为静止兜底周期（演示默认 10 s）；量产可改为 180～300 与文档《心率传感器低功耗设计方案》对齐。
+1. 将需要的 `.c` 加入工程（若不用 `step_counter`，可不加入 `step_counter.c`）。
+2. `sdk_config.h`：`TWI0`、`GPIOTE`、`NRFX_CLOCK`、`RTC2` 等；**无需** `RTC2_TICK`。
+3. 修改 `board_pins.h`；实现 **`persist_steps_minute()`** 内真实写盘。
+4. 调 **`STEP_THRESHOLD_HIGH`、`LOW_ACTIVITY_MINUTES`**；心率采样率见 `MAX30102_SAMPLE_RATE_HZ` 与 `max30102.c` 中 `REG_SPO2_CONFIG`。
 
 ## 局限说明
 
-- **计步 / BPM 算法**为演示级，量产需大量标定与滤波（运动伪影、肤色、透光等）。
-- 已集成 **RTC2**：**TICK** 计步采样（prescaler=819，约 25 ms/次）、**COMPARE0** 心率兜底。主循环用 **`__WFI()`** 等 TICK/GPIOTE 唤醒。未集成 **SoftDevice**、Flash 落盘状态机；心率测量窗口内仍使用 **`nrf_delay_ms`** 轮询 FIFO。
-- 未包含 `sdk_config.h` / 启动文件；需在 SDK 工程中由模板提供。
+- 中断内仅 `g_steps_ram++`，与真实「步」的关系需标定；高活动分钟内心率策略为「到分钟边界再测」，非秒级实时。
+- 未集成 SoftDevice、完整 PM；心率窗口内仍 `nrf_delay_ms` 轮询 FIFO。
 
 ## 与文档站的关系
 
-手环侧栏中的设计说明见站点 `docs/手环/`；本目录为可拷贝进固件仓库的 **参考实现**。
+设计说明见站点 `docs/手环/`。
