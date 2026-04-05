@@ -2,7 +2,7 @@
 sidebar_position: 4
 ---
 
-# LIS3DH 与 MAX30102 心率整合样例
+# LIS3DH 与 MAX30102 整合样例
 
 ## 硬件说明（必读）
 
