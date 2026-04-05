@@ -1,13 +1,12 @@
 /**
  * @file main.c
- * @brief 省电：静止时关闭 RTC TICK；运动 INT 后短时开启 TICK 读加速度计步；每分钟 COMPARE0。
+ * @brief 省电 + 心率：非阻塞状态机（RTC TICK 推进），无 nrf_delay_ms 测量窗
  */
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 
 #include "nrf.h"
-#include "nrf_delay.h"
 #include "nrf_drv_gpiote.h"
 
 #include "board_pins.h"
@@ -20,18 +19,107 @@
 
 #define MAX30102_SAMPLE_RATE_HZ  100u
 #define HR_MEASURE_WINDOW_MS     4000u
-#define HR_POLL_INTERVAL_MS      25u
 
 #define RTC_MINUTE_PERIOD_SEC    60u
 #define STEP_THRESHOLD_HIGH      100u
 #define LOW_ACTIVITY_MINUTES     5u
 
-/** 运动中断后保持「快速计步采样」的时长（秒），超时关 TICK */
 #define MOTION_BURST_SEC         12u
 #define MOTION_BURST_TICKS       ((uint32_t)MOTION_BURST_SEC * RTC_TICKS_PER_SEC)
 
 static volatile uint32_t g_steps_ram;
 static volatile bool g_motion_pending;
+
+/* ---------- 心率：按 RTC TICK 推进（每 tick 约 RTC_MS_PER_TICK ms） ---------- */
+
+typedef enum {
+    HR_SM_IDLE = 0,
+    HR_SM_START_PPG,
+    HR_SM_COLLECT,
+    HR_SM_SHUTDOWN
+} hr_sm_state_t;
+
+static hr_sm_state_t s_hr_sm;
+static uint32_t s_hr_red_buf[512];
+static size_t s_hr_total_samples;
+static uint16_t s_hr_collect_ticks;
+static uint8_t s_hr_last_bpm;
+
+static bool hr_sm_is_busy(void)
+{
+    return s_hr_sm != HR_SM_IDLE;
+}
+
+static void hr_measurement_request_start(void)
+{
+    rtc_hr_schedule_discard_pending();
+    rtc_schedule_step_ticks_flush();
+
+    s_hr_total_samples = 0;
+    s_hr_collect_ticks = 0;
+    s_hr_sm = HR_SM_START_PPG;
+    rtc_schedule_step_ticks_set(true);
+}
+
+static void hr_sm_on_tick(void)
+{
+    ret_code_t err;
+
+    switch (s_hr_sm) {
+    case HR_SM_IDLE:
+        break;
+
+    case HR_SM_START_PPG:
+        err = max30102_mode_hr_run();
+        if (err != NRF_SUCCESS) {
+            max30102_shutdown();
+            s_hr_sm = HR_SM_IDLE;
+            rtc_schedule_step_ticks_set(false);
+            rtc_schedule_step_ticks_flush();
+            return;
+        }
+        s_hr_sm = HR_SM_COLLECT;
+        break;
+
+    case HR_SM_COLLECT: {
+        size_t chunk = 0;
+        err = max30102_collect_fifo_red(
+            s_hr_red_buf + s_hr_total_samples,
+            (sizeof(s_hr_red_buf) / sizeof(s_hr_red_buf[0])) - s_hr_total_samples,
+            &chunk);
+        if (err != NRF_SUCCESS) {
+            s_hr_sm = HR_SM_SHUTDOWN;
+            break;
+        }
+        s_hr_total_samples += chunk;
+        s_hr_collect_ticks++;
+
+        uint32_t ms = (uint32_t)s_hr_collect_ticks * (uint32_t)RTC_MS_PER_TICK;
+        if (ms >= HR_MEASURE_WINDOW_MS ||
+            s_hr_total_samples >= (sizeof(s_hr_red_buf) / sizeof(s_hr_red_buf[0]))) {
+            s_hr_sm = HR_SM_SHUTDOWN;
+        }
+        break;
+    }
+
+    case HR_SM_SHUTDOWN:
+        max30102_shutdown();
+        if (s_hr_total_samples < 64u) {
+            s_hr_last_bpm = 0;
+        } else {
+            s_hr_last_bpm = hr_estimate_bpm_from_red(
+                s_hr_red_buf, s_hr_total_samples, MAX30102_SAMPLE_RATE_HZ);
+        }
+        (void)s_hr_last_bpm;
+
+        s_hr_sm = HR_SM_IDLE;
+        rtc_schedule_step_ticks_set(false);
+        rtc_schedule_step_ticks_flush();
+        break;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
 
 static void lis3dh_int1_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
@@ -61,45 +149,6 @@ static void persist_steps_minute(uint32_t steps_this_minute)
     (void)steps_this_minute;
 }
 
-static uint8_t run_one_hr_measurement(void)
-{
-    rtc_hr_schedule_discard_pending();
-    rtc_schedule_step_ticks_set(false);
-    rtc_schedule_step_ticks_flush();
-
-    ret_code_t err = max30102_mode_hr_run();
-    if (err != NRF_SUCCESS) {
-        max30102_shutdown();
-        return 0;
-    }
-
-    uint32_t red_buf[512];
-    size_t total = 0;
-
-    uint32_t elapsed = 0;
-    while (elapsed < HR_MEASURE_WINDOW_MS) {
-        nrf_delay_ms(HR_POLL_INTERVAL_MS);
-        elapsed += HR_POLL_INTERVAL_MS;
-
-        size_t chunk = 0;
-        err = max30102_collect_fifo_red(red_buf + total, sizeof(red_buf) / sizeof(red_buf[0]) - total, &chunk);
-        if (err != NRF_SUCCESS) {
-            break;
-        }
-        total += chunk;
-        if (total >= sizeof(red_buf) / sizeof(red_buf[0])) {
-            break;
-        }
-    }
-
-    max30102_shutdown();
-
-    if (total < 64u) {
-        return 0;
-    }
-    return hr_estimate_bpm_from_red(red_buf, total, MAX30102_SAMPLE_RATE_HZ);
-}
-
 static void step_burst_stop(void)
 {
     rtc_schedule_step_ticks_set(false);
@@ -108,6 +157,12 @@ static void step_burst_stop(void)
 
 static void on_minute_tick(uint32_t *low_streak)
 {
+    if (hr_sm_is_busy()) {
+        /* 不应出现：分钟周期应远大于心率窗口；若出现则跳过本次分钟逻辑 */
+        rtc_hr_schedule_arm_seconds(RTC_MINUTE_PERIOD_SEC);
+        return;
+    }
+
     step_burst_stop();
 
     uint32_t steps;
@@ -131,11 +186,9 @@ static void on_minute_tick(uint32_t *low_streak)
         }
     }
 
-    uint8_t bpm = 0;
     if (need_hr) {
-        bpm = run_one_hr_measurement();
+        hr_measurement_request_start();
     }
-    (void)bpm;
 
     rtc_hr_schedule_arm_seconds(RTC_MINUTE_PERIOD_SEC);
 }
@@ -151,6 +204,8 @@ int main(void)
 
     uint8_t who = 0;
     uint8_t part = 0;
+    s_hr_sm = HR_SM_IDLE;
+
     (void)lis3dh_read_who_am_i(&who);
     (void)lis3dh_init_motion_interrupt();
     gpiote_init_lis3dh();
@@ -172,7 +227,7 @@ int main(void)
     bool burst_active = false;
 
     for (;;) {
-        if (g_motion_pending) {
+        if (g_motion_pending && !hr_sm_is_busy()) {
             __disable_irq();
             g_motion_pending = false;
             __enable_irq();
@@ -186,19 +241,23 @@ int main(void)
         uint32_t n = rtc_schedule_drain_step_ticks();
         while (n > 0u) {
             n--;
-            int16_t ax, ay, az;
-            err = lis3dh_read_accel(&ax, &ay, &az);
-            if (err == NRF_SUCCESS) {
-                step_counter_notify_time_ms(RTC_MS_PER_TICK);
-                if (step_counter_on_accel_sample(ax, ay, az)) {
-                    __disable_irq();
-                    g_steps_ram++;
-                    __enable_irq();
+            if (hr_sm_is_busy()) {
+                hr_sm_on_tick();
+            } else if (burst_active) {
+                int16_t ax, ay, az;
+                err = lis3dh_read_accel(&ax, &ay, &az);
+                if (err == NRF_SUCCESS) {
+                    step_counter_notify_time_ms(RTC_MS_PER_TICK);
+                    if (step_counter_on_accel_sample(ax, ay, az)) {
+                        __disable_irq();
+                        g_steps_ram++;
+                        __enable_irq();
+                    }
                 }
             }
         }
 
-        if (burst_active) {
+        if (burst_active && !hr_sm_is_busy()) {
             uint32_t now = rtc_schedule_counter_get();
             uint32_t elapsed = (now - burst_start) & 0x00FFFFFFu;
             if (elapsed >= MOTION_BURST_TICKS) {
