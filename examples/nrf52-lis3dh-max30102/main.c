@@ -45,6 +45,24 @@ static size_t s_hr_total_samples;
 static uint16_t s_hr_collect_ticks;
 static uint8_t s_hr_last_bpm;
 
+/** 每个 RTC TICK 一次：心率窗口内与 PPG 同节拍计步（同一 TWI：先 MAX30102 再 LIS3DH） */
+static void step_sample_one_tick(void)
+{
+    int16_t ax, ay, az;
+    ret_code_t err;
+
+    err = lis3dh_read_accel(&ax, &ay, &az);
+    if (err != NRF_SUCCESS) {
+        return;
+    }
+    step_counter_notify_time_ms(RTC_MS_PER_TICK);
+    if (step_counter_on_accel_sample(ax, ay, az)) {
+        __disable_irq();
+        g_steps_ram++;
+        __enable_irq();
+    }
+}
+
 static bool hr_sm_is_busy(void)
 {
     return s_hr_sm != HR_SM_IDLE;
@@ -72,6 +90,7 @@ static void hr_sm_on_tick(void)
     case HR_SM_START_PPG:
         err = max30102_mode_hr_run();
         if (err != NRF_SUCCESS) {
+            step_sample_one_tick();
             max30102_shutdown();
             s_hr_sm = HR_SM_IDLE;
             rtc_schedule_step_ticks_set(false);
@@ -79,6 +98,7 @@ static void hr_sm_on_tick(void)
             return;
         }
         s_hr_sm = HR_SM_COLLECT;
+        step_sample_one_tick();
         break;
 
     case HR_SM_COLLECT: {
@@ -88,6 +108,7 @@ static void hr_sm_on_tick(void)
             (sizeof(s_hr_red_buf) / sizeof(s_hr_red_buf[0])) - s_hr_total_samples,
             &chunk);
         if (err != NRF_SUCCESS) {
+            step_sample_one_tick();
             s_hr_sm = HR_SM_SHUTDOWN;
             break;
         }
@@ -97,12 +118,16 @@ static void hr_sm_on_tick(void)
         uint32_t ms = (uint32_t)s_hr_collect_ticks * (uint32_t)RTC_MS_PER_TICK;
         if (ms >= HR_MEASURE_WINDOW_MS ||
             s_hr_total_samples >= (sizeof(s_hr_red_buf) / sizeof(s_hr_red_buf[0]))) {
+            step_sample_one_tick();
             s_hr_sm = HR_SM_SHUTDOWN;
+        } else {
+            step_sample_one_tick();
         }
         break;
     }
 
     case HR_SM_SHUTDOWN:
+        step_sample_one_tick();
         max30102_shutdown();
         if (s_hr_total_samples < 64u) {
             s_hr_last_bpm = 0;
