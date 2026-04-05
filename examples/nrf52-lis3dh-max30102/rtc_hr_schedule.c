@@ -1,8 +1,7 @@
 /**
  * @file rtc_hr_schedule.c
  *
- * TICK：约 25 ms 一次，供主循环读加速度计步（I²C 不在 ISR 里做）。
- * COMPARE0：整分钟，落盘 + 心率策略。
+ * TICK 默认关闭；由 main 在运动中断后短时开启，静止时关闭以降低唤醒频率。
  */
 #include "rtc_hr_schedule.h"
 #include "nrf.h"
@@ -58,7 +57,8 @@ ret_code_t rtc_hr_schedule_init(uint32_t interval_sec)
         return err;
     }
 
-    nrf_drv_rtc_tick_enable(&m_rtc);
+    /* 计步 TICK 由 rtc_schedule_step_ticks_set(true) 按需打开，静止时不跑 25ms 节拍 */
+    nrf_drv_rtc_tick_disable(&m_rtc);
     nrf_drv_rtc_enable(&m_rtc);
 
     m_minute_due = false;
@@ -90,4 +90,25 @@ uint32_t rtc_schedule_drain_step_ticks(void)
     m_step_tick_count = 0;
     __enable_irq();
     return n;
+}
+
+void rtc_schedule_step_ticks_set(bool enable)
+{
+    if (enable) {
+        nrf_drv_rtc_tick_enable(&m_rtc);
+    } else {
+        nrf_drv_rtc_tick_disable(&m_rtc);
+    }
+}
+
+void rtc_schedule_step_ticks_flush(void)
+{
+    __disable_irq();
+    m_step_tick_count = 0;
+    __enable_irq();
+}
+
+uint32_t rtc_schedule_counter_get(void)
+{
+    return nrf_drv_rtc_counter_get(&m_rtc);
 }

@@ -1,15 +1,21 @@
 # nRF52 + LIS3DH + MAX30102 示例工程（C）
 
-## 数据流（当前 `main.c`）
+## 数据流与省电（当前 `main.c`）
 
-1. **LIS3DH INT1（GPIOTE 中断）**  
-   只做 **`lis3dh_clear_int1()`**，**不在 ISR 里读传感器**（避免 I²C 拉长中断）。
+1. **LIS3DH INT1**  
+   ISR：**`lis3dh_clear_int1()`** + 置 **`g_motion_pending`**（不读传感器）。
 
-2. **RTC TICK（约 25 ms）**  
-   主循环 **`lis3dh_read_accel`** → **`step_counter_*`** 做简易峰检测；**判到一步** 再 **`g_steps_ram++`**（关中断保护）。
+2. **静止**  
+   **RTC TICK 关闭**，CPU **`__WFI()`** 仅由 **COMPARE0（每分钟）** 或 **GPIOTE** 唤醒，**无 25 ms 周期唤醒**。
 
-3. **RTC COMPARE0（每 60 s）**  
-   读走并清零 **`g_steps_ram`** → **`persist_steps_minute()`**（stub）→ 心率：本分钟 **>100 步** 或 **连续低活动满 5 分钟** → 可选测心率 → **`arm(60)`**。
+3. **运动**  
+   主循环见到 **`g_motion_pending`** → **打开 TICK** + 刷新 **`MOTION_BURST_SEC`（默认 12 s）** 窗口起点；窗口内约 **25 ms** 读加速度计步。  
+   **再次 INT1 会重置窗口起点**（持续走动会续期）。超时 **关 TICK**。
+
+4. **每分钟 COMPARE0**  
+   先 **关 TICK** → 读走 **`g_steps_ram`** → 落盘 stub → 心率规则 → **`arm(60)`**。测心率期间 TICK 保持关。
+
+可调 **`MOTION_BURST_SEC`**：越大跟手越好、越费电；越小越省、可能漏步至下次中断。
 
 ## 文件说明
 

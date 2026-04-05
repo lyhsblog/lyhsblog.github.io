@@ -1,10 +1,6 @@
 /**
  * @file main.c
- * @brief LIS3DH 运动 INT 仅清中断；计步在主循环读加速度；RTC 每分钟落盘 + 条件心率
- *
- * - GPIOTE ISR：只做 lis3dh_clear_int1()（不在 ISR 里 I²C 读数据，避免中断过长）。
- * - RTC TICK ≈25 ms：主循环读 lis3dh_read_accel → step_counter → 判到一步则 g_steps_ram++。
- * - RTC COMPARE0 每 60 s：persist + 清零 g_steps_ram + 心率规则。
+ * @brief 省电：静止时关闭 RTC TICK；运动 INT 后短时开启 TICK 读加速度计步；每分钟 COMPARE0。
  */
 #include <stdint.h>
 #include <stdbool.h>
@@ -30,15 +26,19 @@
 #define STEP_THRESHOLD_HIGH      100u
 #define LOW_ACTIVITY_MINUTES     5u
 
-/* 本分钟内由「加速度计步算法」累加的步数；每分钟任务读走并清零 */
+/** 运动中断后保持「快速计步采样」的时长（秒），超时关 TICK */
+#define MOTION_BURST_SEC         12u
+#define MOTION_BURST_TICKS       ((uint32_t)MOTION_BURST_SEC * RTC_TICKS_PER_SEC)
+
 static volatile uint32_t g_steps_ram;
+static volatile bool g_motion_pending;
 
 static void lis3dh_int1_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
     (void)pin;
     (void)action;
-    /* 只清 LIS3DH 锁存；步数在主线读 OUT_X/Y/Z + step_counter 判定 */
     lis3dh_clear_int1();
+    g_motion_pending = true;
 }
 
 static void gpiote_init_lis3dh(void)
@@ -59,12 +59,13 @@ static void gpiote_init_lis3dh(void)
 static void persist_steps_minute(uint32_t steps_this_minute)
 {
     (void)steps_this_minute;
-    /* TODO: Flash */
 }
 
 static uint8_t run_one_hr_measurement(void)
 {
     rtc_hr_schedule_discard_pending();
+    rtc_schedule_step_ticks_set(false);
+    rtc_schedule_step_ticks_flush();
 
     ret_code_t err = max30102_mode_hr_run();
     if (err != NRF_SUCCESS) {
@@ -99,8 +100,16 @@ static uint8_t run_one_hr_measurement(void)
     return hr_estimate_bpm_from_red(red_buf, total, MAX30102_SAMPLE_RATE_HZ);
 }
 
+static void step_burst_stop(void)
+{
+    rtc_schedule_step_ticks_set(false);
+    rtc_schedule_step_ticks_flush();
+}
+
 static void on_minute_tick(uint32_t *low_streak)
 {
+    step_burst_stop();
+
     uint32_t steps;
 
     __disable_irq();
@@ -159,8 +168,21 @@ int main(void)
     }
 
     uint32_t low_activity_streak = 0;
+    uint32_t burst_start = 0;
+    bool burst_active = false;
 
     for (;;) {
+        if (g_motion_pending) {
+            __disable_irq();
+            g_motion_pending = false;
+            __enable_irq();
+
+            burst_start = rtc_schedule_counter_get();
+            burst_active = true;
+            rtc_schedule_step_ticks_set(true);
+            rtc_schedule_step_ticks_flush();
+        }
+
         uint32_t n = rtc_schedule_drain_step_ticks();
         while (n > 0u) {
             n--;
@@ -176,8 +198,18 @@ int main(void)
             }
         }
 
+        if (burst_active) {
+            uint32_t now = rtc_schedule_counter_get();
+            uint32_t elapsed = (now - burst_start) & 0x00FFFFFFu;
+            if (elapsed >= MOTION_BURST_TICKS) {
+                burst_active = false;
+                step_burst_stop();
+            }
+        }
+
         if (rtc_hr_schedule_consume_due()) {
             on_minute_tick(&low_activity_streak);
+            burst_active = false;
         }
 
         __WFI();
