@@ -21,6 +21,11 @@ void step_counter_init(void)
     s_tick_ms = 0;
 }
 
+void step_counter_notify_time_ms(uint32_t dt_ms)
+{
+    s_tick_ms += dt_ms;
+}
+
 uint32_t step_counter_get(void)
 {
     return s_steps;
@@ -33,8 +38,6 @@ static int32_t abs_i32(int32_t v)
 
 bool step_counter_on_accel_sample(int16_t x, int16_t y, int16_t z)
 {
-    s_tick_ms += 25u; /* 与 main 中调用间隔一致 */
-
     int32_t ax = x;
     int32_t ay = y;
     int32_t az = z;

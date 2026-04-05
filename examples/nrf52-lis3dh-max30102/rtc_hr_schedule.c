@@ -1,19 +1,26 @@
 /**
  * @file rtc_hr_schedule.c
+ *
+ * prescaler=819 → COUNTER 频率 32768/(819+1) ≈ 40 Hz；
+ * COMPARE0 用 RTC_TICKS_PER_SEC(40) 换算「秒」与 COUNTER tick 一致。
  */
 #include "rtc_hr_schedule.h"
+#include "nrf.h"
 #include "nrf_drv_clock.h"
 #include "nrf_drv_rtc.h"
 
-/* 32768 / (4095+1) = 8 Hz */
-#define RTC_PRESCALER 4095u
+/* 32768 / (819+1) ≈ 39.96 Hz → 约 25 ms/TICK，与计步原节拍一致 */
+#define RTC_PRESCALER 819u
 
 static const nrf_drv_rtc_t m_rtc = NRF_DRV_RTC_INSTANCE(2);
 static volatile bool m_hr_due;
+static volatile uint32_t m_step_tick_count;
 
 static void rtc_handler(nrf_drv_rtc_int_type_t int_type)
 {
-    if (int_type == NRF_DRV_RTC_INT_COMPARE0) {
+    if (int_type == NRF_DRV_RTC_INT_TICK) {
+        m_step_tick_count++;
+    } else if (int_type == NRF_DRV_RTC_INT_COMPARE0) {
         m_hr_due = true;
     }
 }
@@ -31,9 +38,9 @@ static void lfclk_blocking_start(void)
 
 void rtc_hr_schedule_arm_seconds(uint32_t interval_sec)
 {
-    uint32_t ticks = interval_sec * RTC_HR_TICKS_PER_SEC;
+    uint32_t ticks = interval_sec * RTC_TICKS_PER_SEC;
     if (ticks == 0u) {
-        ticks = RTC_HR_TICKS_PER_SEC;
+        ticks = RTC_TICKS_PER_SEC;
     }
 
     uint32_t now = nrf_drv_rtc_counter_get(&m_rtc);
@@ -53,9 +60,11 @@ ret_code_t rtc_hr_schedule_init(uint32_t interval_sec)
         return err;
     }
 
+    nrf_drv_rtc_tick_enable(&m_rtc);
     nrf_drv_rtc_enable(&m_rtc);
 
     m_hr_due = false;
+    m_step_tick_count = 0;
     rtc_hr_schedule_arm_seconds(interval_sec);
     return NRF_SUCCESS;
 }
@@ -72,4 +81,15 @@ bool rtc_hr_schedule_consume_due(void)
 void rtc_hr_schedule_discard_pending(void)
 {
     m_hr_due = false;
+}
+
+uint32_t rtc_schedule_drain_step_ticks(void)
+{
+    uint32_t n;
+
+    __disable_irq();
+    n = m_step_tick_count;
+    m_step_tick_count = 0;
+    __enable_irq();
+    return n;
 }

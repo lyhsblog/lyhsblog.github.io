@@ -12,14 +12,14 @@
 | `max30102.c/h` | 软复位、Shutdown、HR 模式、FIFO 读出与缓冲收集 |
 | `step_counter.c/h` | 幅值 + 高通近似的演示计步（需标定阈值） |
 | `hr_estimator.c/h` | 对红灯波形做中值/差分/峰间期的演示 BPM（非医疗级） |
-| `rtc_hr_schedule.c/h` | LFCLK + **RTC2** COMPARE0：按秒级间隔产生「该测心率」节拍（与主循环 `delay` 解耦） |
-| `main.c` | 约 25 ms 轮询加速度计计步；**LIS3DH INT1** 或 **RTC 兜底**（默认 10 s）触发心率测量 |
+| `rtc_hr_schedule.c/h` | LFCLK + **RTC2**：**TICK** ≈40 Hz（约 25 ms）驱动计步采样；**COMPARE0** 按秒级间隔产生心率兜底节拍 |
+| `main.c` | **`__WFI()`** 等待中断；每来一次 RTC TICK 读加速度并计步；**LIS3DH INT1** 或 **RTC 比较**（默认 10 s）触发心率测量 |
 
 ## 集成步骤（概要）
 
 1. 新建或打开 **nRF5 SDK** 的 `blank` / `peripheral` 工程（`nrf52840_xxaa` 等）。
 2. 将本目录下所有 `.c` 加入工程；头文件路径包含本目录。
-3. 在 `sdk_config.h` 中启用：`TWI_ENABLED`、`TWI0_ENABLED`、`TWI0_USE_EASY_DMA`、`GPIOTE_ENABLED`、`NRFX_CLOCK_ENABLED`、`RTC_ENABLED`、**`RTC2_ENABLED`**（及 `RTC2_*` 相关项，与 SDK 中 `rtc` 示例一致）。若与工程内其它模块冲突，可改 `rtc_hr_schedule.c` 中的 `NRF_DRV_RTC_INSTANCE(2)` 为空闲实例。
+3. 在 `sdk_config.h` 中启用：`TWI_ENABLED`、`TWI0_ENABLED`、`TWI0_USE_EASY_DMA`、`GPIOTE_ENABLED`、`NRFX_CLOCK_ENABLED`、`RTC_ENABLED`、**`RTC2_ENABLED`**、**`RTC2_TICK_ENABLED`**（或等价项，使 `nrf_drv_rtc_tick_enable` 生效）。若与工程内其它模块冲突，可改 `rtc_hr_schedule.c` 中的 `NRF_DRV_RTC_INSTANCE(2)` 为空闲实例。
 4. 修改 `board_pins.h` 中的 **I²C 与 INT1** 引脚。
 5. 确认 LIS3DH **7 位地址**（`0x18` / `0x19`）与 MAX30102 **`0x57`** 与硬件一致。
 6. **心率采样率**：`main.c` 中 `MAX30102_SAMPLE_RATE_HZ` 须与 `max30102.c` 里 `REG_SPO2_CONFIG` 实际配置一致（当前按 **100 Hz** 示意，请以 Maxim 手册核对 `0x27` 对应表）。
@@ -28,7 +28,7 @@
 ## 局限说明
 
 - **计步 / BPM 算法**为演示级，量产需大量标定与滤波（运动伪影、肤色、透光等）。
-- 已集成 **RTC2 比较通道** 做心率兜底节拍；**计步**仍依赖主循环 `delay`。未集成 **SoftDevice**、完整 **低功耗睡眠**、Flash 落盘状态机。
+- 已集成 **RTC2**：**TICK** 计步采样（prescaler=819，约 25 ms/次）、**COMPARE0** 心率兜底。主循环用 **`__WFI()`** 等 TICK/GPIOTE 唤醒。未集成 **SoftDevice**、Flash 落盘状态机；心率测量窗口内仍使用 **`nrf_delay_ms`** 轮询 FIFO。
 - 未包含 `sdk_config.h` / 启动文件；需在 SDK 工程中由模板提供。
 
 ## 与文档站的关系

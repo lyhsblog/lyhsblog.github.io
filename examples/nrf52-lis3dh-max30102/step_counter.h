@@ -8,6 +8,11 @@ void step_counter_init(void);
 uint32_t step_counter_get(void);
 
 /**
+ * 通知自上次采样以来经过的时间（毫秒），用于步间最小间隔；由 RTC TICK 节拍驱动时调用。
+ */
+void step_counter_notify_time_ms(uint32_t dt_ms);
+
+/**
  * 传入 LIS3DH 原始加速度（与 read_accel 一致，有符号 16 位）。
  * 内部用简易高通 + 幅值峰值检测；参数需按佩戴位置标定。
  */

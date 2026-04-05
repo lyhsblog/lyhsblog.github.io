@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "nrf.h"
 #include "nrf_delay.h"
 #include "nrf_drv_gpiote.h"
 
@@ -122,10 +123,15 @@ int main(void)
     uint8_t last_bpm = 0;
 
     for (;;) {
-        int16_t ax, ay, az;
-        err = lis3dh_read_accel(&ax, &ay, &az);
-        if (err == NRF_SUCCESS) {
-            (void)step_counter_on_accel_sample(ax, ay, az);
+        uint32_t n = rtc_schedule_drain_step_ticks();
+        while (n > 0u) {
+            n--;
+            int16_t ax, ay, az;
+            err = lis3dh_read_accel(&ax, &ay, &az);
+            if (err == NRF_SUCCESS) {
+                step_counter_notify_time_ms(RTC_MS_PER_TICK);
+                (void)step_counter_on_accel_sample(ax, ay, az);
+            }
         }
 
         bool motion = g_motion_int;
@@ -140,6 +146,7 @@ int main(void)
             rtc_hr_schedule_arm_seconds(HR_RTC_INTERVAL_SEC);
         }
 
-        nrf_delay_ms(25u);
+        /* 等 RTC TICK / GPIOTE 等中断唤醒；心率测量期间积压的 tick 在下一轮 while(n) 中一次性消化 */
+        __WFI();
     }
 }
