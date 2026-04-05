@@ -2,7 +2,7 @@
  * @file main.c
  * @brief nRF52 + LIS3DH（计步 + 运动 INT1）+ MAX30102（心率 FIFO + 简易 BPM）
  *
- * 依赖：nRF5 SDK 17.x（或 16.x）+ 已启用 TWI0、GPIOTE、CLOCKS。
+ * 依赖：nRF5 SDK 17.x（或 16.x）+ TWI0、GPIOTE、LFCLK、RTC2（见 rtc_hr_schedule.c）。
  * 将本目录 .c 加入 Keil/Ses/CMake 工程，并包含 nrf52840 的 sdk_config.h。
  */
 #include <stdint.h>
@@ -18,12 +18,16 @@
 #include "max30102.h"
 #include "step_counter.h"
 #include "hr_estimator.h"
+#include "rtc_hr_schedule.h"
 
 /* 与 max30102.c 中 REG_SPO2_CONFIG=0x27 对应的采样率须一致；常见为 100 Hz，请以手册为准 */
 #define MAX30102_SAMPLE_RATE_HZ  100u
 
 #define HR_MEASURE_WINDOW_MS     4000u
 #define HR_POLL_INTERVAL_MS      25u
+
+/** RTC 兜底：静止时每隔多少秒测一次心率（与文档中 3～5 min 量产参数不同，演示用 10 s） */
+#define HR_RTC_INTERVAL_SEC      10u
 
 static volatile bool g_motion_int;
 
@@ -52,6 +56,9 @@ static void gpiote_init_lis3dh(void)
 
 static uint8_t run_one_hr_measurement(void)
 {
+    /* 测量窗口数秒期间 RTC 可能到期，避免结束后立刻再测 */
+    rtc_hr_schedule_discard_pending();
+
     ret_code_t err = max30102_mode_hr_run();
     if (err != NRF_SUCCESS) {
         max30102_shutdown();
@@ -105,7 +112,13 @@ int main(void)
 
     step_counter_init();
 
-    uint32_t ms_since_hr = 0;
+    err = rtc_hr_schedule_init(HR_RTC_INTERVAL_SEC);
+    if (err != NRF_SUCCESS) {
+        for (;;) {
+            __WFE();
+        }
+    }
+
     uint8_t last_bpm = 0;
 
     for (;;) {
@@ -120,12 +133,11 @@ int main(void)
             g_motion_int = false;
         }
 
-        /* 静止兜底：约每 10 s 测一次心率（演示）；量产请改 RTC / app_timer */
-        ms_since_hr += 25u;
-        if (motion || ms_since_hr >= 10000u) {
-            ms_since_hr = 0;
+        bool rtc_due = rtc_hr_schedule_consume_due();
+        if (motion || rtc_due) {
             last_bpm = run_one_hr_measurement();
             (void)last_bpm;
+            rtc_hr_schedule_arm_seconds(HR_RTC_INTERVAL_SEC);
         }
 
         nrf_delay_ms(25u);
