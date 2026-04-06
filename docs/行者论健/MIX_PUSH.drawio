@@ -1,0 +1,83 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.7.5 Chrome/126.0.6478.183 Electron/31.3.0 Safari/537.36" version="24.7.5">
+  <diagram name="Page-1" id="0en4Bz6Jg8MkjhhcqTZy">
+    <mxGraphModel dx="1050" dy="629" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-1" value="应用服务器" style="swimlane;" parent="1" vertex="1">
+          <mxGeometry x="60" y="160" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-11" value="健走服务" style="whiteSpace=wrap;html=1;" parent="aiCgDQnrlSsc61PGJgr_-1" vertex="1">
+          <mxGeometry y="40" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-14" value="知识服务" style="whiteSpace=wrap;html=1;" parent="aiCgDQnrlSsc61PGJgr_-1" vertex="1">
+          <mxGeometry y="120" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-2" value="推送服务器" style="swimlane;" parent="1" vertex="1">
+          <mxGeometry x="540" y="160" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-3" value="集成MIXPUSH" style="whiteSpace=wrap;html=1;" parent="aiCgDQnrlSsc61PGJgr_-2" vertex="1">
+          <mxGeometry y="40" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-27" value="提供HTTP接口给应用服务器调用" style="whiteSpace=wrap;html=1;" parent="aiCgDQnrlSsc61PGJgr_-2" vertex="1">
+          <mxGeometry y="120" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-4" value="手机厂商推送中心" style="swimlane;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=20;horizontalStack=0;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1000" y="160" width="480" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-5" value="Lane 1" style="swimlane;startSize=20;horizontal=0;html=1;" parent="aiCgDQnrlSsc61PGJgr_-4" vertex="1">
+          <mxGeometry y="20" width="480" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-8" value="小米推送" style="whiteSpace=wrap;html=1;" parent="aiCgDQnrlSsc61PGJgr_-5" vertex="1">
+          <mxGeometry x="20" y="20" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-6" value="Lane 2" style="swimlane;startSize=20;horizontal=0;html=1;" parent="aiCgDQnrlSsc61PGJgr_-4" vertex="1">
+          <mxGeometry y="140" width="480" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-9" value="VIVO推送" style="whiteSpace=wrap;html=1;" parent="aiCgDQnrlSsc61PGJgr_-6" vertex="1">
+          <mxGeometry x="20" y="30" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-7" value="Lane 3" style="swimlane;startSize=20;horizontal=0;html=1;" parent="aiCgDQnrlSsc61PGJgr_-4" vertex="1">
+          <mxGeometry y="260" width="480" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-10" value="其他手机厂商" style="whiteSpace=wrap;html=1;" parent="aiCgDQnrlSsc61PGJgr_-7" vertex="1">
+          <mxGeometry x="20" y="30" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-15" value="3.根据业务向推送服务器发送消息" style="shape=singleArrow;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="260" y="240" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-17" value="" style="shape=singleArrow;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="740" y="240" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="aiCgDQnrlSsc61PGJgr_-19" target="aiCgDQnrlSsc61PGJgr_-7" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-26" value="&lt;h1&gt;1.通过SDK连接并获取设备推送ID&lt;/h1&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="aiCgDQnrlSsc61PGJgr_-23" vertex="1" connectable="0">
+          <mxGeometry x="0.6729" relative="1" as="geometry">
+            <mxPoint y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="aiCgDQnrlSsc61PGJgr_-19" target="aiCgDQnrlSsc61PGJgr_-1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-25" value="&lt;h1&gt;2.将推送中心分配的设备推送ID绑定到应用服务器&lt;/h1&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="aiCgDQnrlSsc61PGJgr_-24" vertex="1" connectable="0">
+          <mxGeometry x="0.2818" y="1" relative="1" as="geometry">
+            <mxPoint x="161" y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-19" value="用户设备1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="1" vertex="1">
+          <mxGeometry x="380" y="840" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-20" value="用户设备2" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="1" vertex="1">
+          <mxGeometry x="580" y="840" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-21" value="用户设备3" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="1" vertex="1">
+          <mxGeometry x="800" y="840" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="aiCgDQnrlSsc61PGJgr_-22" value="用户设备n..." style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="1" vertex="1">
+          <mxGeometry x="1010" y="840" width="120" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

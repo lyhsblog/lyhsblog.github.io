@@ -1,0 +1,110 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.7.5 Chrome/126.0.6478.183 Electron/31.3.0 Safari/537.36" version="24.7.5">
+  <diagram name="Page-1" id="GrbSrU1-HG-ES54uNJV1">
+    <mxGraphModel dx="3269" dy="1258" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-1" value="主数据库" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="1047.5" y="250" width="60" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-2" value="从数据库" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="1047.5" y="603" width="60" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-6" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-3" target="gF2gaaj-dQ2gr2qro3XY-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-7" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-3" target="gF2gaaj-dQ2gr2qro3XY-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-3" value="HaProxy2" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" vertex="1" parent="1">
+          <mxGeometry x="900" y="350" width="80" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-4" value="Mysql代理" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="870" y="220" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-17" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-8" target="gF2gaaj-dQ2gr2qro3XY-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-8" value="node" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="240" width="80" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-18" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-9" target="gF2gaaj-dQ2gr2qro3XY-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-9" value="node" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="553" width="80" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-8">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="480" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="810" y="300" />
+              <mxPoint x="810" y="475" />
+              <mxPoint x="900" y="475" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0;entryDx=0;entryDy=120;entryPerimeter=0;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-9" target="gF2gaaj-dQ2gr2qro3XY-3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="810" y="650" />
+              <mxPoint x="810" y="475" />
+              <mxPoint x="900" y="475" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-12" value="应用服务器" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="350" y="465" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-14" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;exitX=0;exitY=0;exitDx=50;exitDy=130;exitPerimeter=0;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-8" target="gF2gaaj-dQ2gr2qro3XY-12">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="360" as="sourcePoint" />
+            <mxPoint x="450" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-15" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-9" target="gF2gaaj-dQ2gr2qro3XY-12">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="470" y="460" as="sourcePoint" />
+            <mxPoint x="520" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-16" value="Redis队列缓存服务器" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="340" width="120" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-27" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-20" target="gF2gaaj-dQ2gr2qro3XY-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-20" value="HaProxy1" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="370" width="110" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-22" value="应用服务器负载均衡" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="65" y="240" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-24" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;exitX=0.487;exitY=-0.003;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-20" target="gF2gaaj-dQ2gr2qro3XY-22">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="140" y="350" as="sourcePoint" />
+            <mxPoint x="190" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-25" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;exitX=0;exitY=0;exitDx=12.5;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-3" target="gF2gaaj-dQ2gr2qro3XY-4">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="910" y="320" as="sourcePoint" />
+            <mxPoint x="960" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-26" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0;entryDx=0;entryDy=110;entryPerimeter=0;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-20" target="gF2gaaj-dQ2gr2qro3XY-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-31" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=100;entryPerimeter=0;exitX=0;exitY=0;exitDx=120;exitDy=145;exitPerimeter=0;" edge="1" parent="1" source="gF2gaaj-dQ2gr2qro3XY-32" target="gF2gaaj-dQ2gr2qro3XY-20">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-220" y="460" as="sourcePoint" />
+            <mxPoint x="-60" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gF2gaaj-dQ2gr2qro3XY-32" value="学校反向代理" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" vertex="1" parent="1">
+          <mxGeometry x="-220" y="320" width="120" height="270" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
